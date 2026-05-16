@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FRC 2026 REBUILT – Scout</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;800&display=swap');
+
+  :root {
+    --bg:       #0a0c10;
+    --surface:  #111620;
+    --card:     #161c28;
+    --border:   #1e2a3e;
+    --accent:   #00c8ff;
+    --accent2:  #ff4e00;
+    --green:    #00e59b;
+    --warn:     #ffb800;
+    --text:     #d8e4f0;
+    --muted:    #5a7090;
+    --radius:   12px;
+    --shadow:   0 4px 24px rgba(0,200,255,.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background grid ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; min-height: 100vh; }
+
+  /* ── Pages ── */
+  .page { display: none; flex-direction: column; min-height: 100vh; padding: 0 0 40px; }
+  .page.active { display: flex; }
+
+  /* ── Header ── */
+  .header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(0,200,255,.06) 0%, transparent 100%);
+    text-align: center;
+    position: relative;
+  }
+  .header .logo {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: clamp(22px, 6vw, 32px);
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    text-shadow: 0 0 30px rgba(0,200,255,.5);
+  }
+  .header .sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+  .back-btn {
+    position: absolute;
+    left: 14px; top: 50%;
+    transform: translateY(-50%);
+    background: var(--border);
+    border: none;
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: background .2s;
+  }
+  .back-btn:hover { background: var(--accent); color: var(--bg); }
+
+  /* ── Step indicator ── */
+  .steps {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 20px 0;
+  }
+  .step-dot {
+    width: 28px; height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background .3s;
+  }
+  .step-dot.done { background: var(--green); }
+  .step-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+
+  /* ── Main content ── */
+  .content { flex: 1; padding: 20px 16px; max-width: 600px; width: 100%; margin: 0 auto; }
+
+  .section-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: clamp(18px, 5vw, 24px);
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 18px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+  .section-title span { color: var(--accent2); }
+
+  /* ── Field rows ── */
+  .field-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    transition: border-color .2s;
+  }
+  .field-row:focus-within { border-color: var(--accent); }
+  .field-row label {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  /* Inputs */
+  input[type="text"], input[type="number"], select {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    font-size: 15px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    -webkit-appearance: none;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,200,255,.12);
+  }
+  select option { background: var(--surface); }
+
+  /* ── Radio / Checkbox group ── */
+  .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .radio-group label {
+    flex: 1; min-width: 70px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    user-select: none;
+    letter-spacing: .5px;
+  }
+  .radio-group input[type="radio"],
+  .radio-group input[type="checkbox"] { display: none; }
+  .radio-group input:checked + span,
+  .radio-group label:has(input:checked) {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,200,255,.08);
+    box-shadow: 0 0 10px rgba(0,200,255,.15);
+  }
+  .radio-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 70px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 11px 8px;
+    text-align: center;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+    user-select: none;
+    letter-spacing: .5px;
+  }
+  .radio-btn.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0,200,255,.08);
+    box-shadow: 0 0 10px rgba(0,200,255,.15);
+  }
+  .radio-btn.green.selected {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(0,229,155,.08);
+    box-shadow: 0 0 10px rgba(0,229,155,.15);
+  }
+  .radio-btn.warn.selected {
+    border-color: var(--warn);
+    color: var(--warn);
+    background: rgba(255,184,0,.08);
+    box-shadow: 0 0 10px rgba(255,184,0,.15);
+  }
+  .radio-btn.danger.selected {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(255,78,0,.08);
+    box-shadow: 0 0 10px rgba(255,78,0,.15);
+  }
+
+  /* ── Checkbox toggle ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .toggle-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: var(--text);
+    text-transform: uppercase;
+  }
+  .toggle-switch { position: relative; width: 50px; height: 26px; }
+  .toggle-switch input { display: none; }
+  .toggle-track {
+    position: absolute; inset: 0;
+    background: var(--border);
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background .3s;
+  }
+  .toggle-thumb {
+    position: absolute;
+    left: 3px; top: 3px;
+    width: 20px; height: 20px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: transform .3s, background .3s;
+    pointer-events: none;
+  }
+  .toggle-switch input:checked ~ .toggle-track { background: rgba(0,200,255,.3); }
+  .toggle-switch input:checked ~ .toggle-track .toggle-thumb {
+    transform: translateX(24px);
+    background: var(--accent);
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: var(--radius);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .2s;
+    margin-top: 18px;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #0088cc);
+    color: var(--bg);
+    box-shadow: 0 4px 20px rgba(0,200,255,.3);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(0,200,255,.45); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-success {
+    background: linear-gradient(135deg, var(--green), #009966);
+    color: var(--bg);
+    box-shadow: 0 4px 20px rgba(0,229,155,.3);
+  }
+  .btn-success:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(0,229,155,.45); }
+
+  /* ── Home screen ── */
+  .home-header {
+    padding: 40px 20px 30px;
+    text-align: center;
+  }
+  .home-logo {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: clamp(28px, 9vw, 52px);
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-shadow: 0 0 40px rgba(0,200,255,.6);
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .home-year {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(13px, 4vw, 18px);
+    color: var(--accent2);
+    letter-spacing: 3px;
+    margin-top: 6px;
+  }
+  .home-subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-top: 10px;
+  }
+  .home-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 10px 18px 30px;
+    max-width: 500px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  .home-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px 20px;
+    cursor: pointer;
+    transition: all .25s;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .home-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--accent);
+    border-radius: 4px 0 0 4px;
+  }
+  .home-card.pit::before { background: var(--green); }
+  .home-card.logs::before { background: var(--warn); }
+  .home-card:hover { transform: translateX(4px); border-color: var(--accent); box-shadow: var(--shadow); }
+  .home-card.pit:hover { border-color: var(--green); }
+  .home-card.logs:hover { border-color: var(--warn); box-shadow: 0 4px 24px rgba(255,184,0,.1); }
+  .card-icon {
+    font-size: 28px;
+    width: 50px; height: 50px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface);
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
+  .card-info { flex: 1; }
+  .card-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+  .card-desc {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: .5px;
+  }
+  .card-arrow { color: var(--muted); font-size: 18px; }
+
+  /* ── Logs ── */
+  .log-entry {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all .2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .log-entry::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+  }
+  .log-entry.pit-log::before { background: var(--green); }
+  .log-entry:hover { border-color: var(--accent); transform: translateX(3px); }
+  .log-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 1px;
+    color: var(--text);
+  }
+  .log-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    letter-spacing: .5px;
+  }
+  .log-badge {
+    display: inline-block;
+    background: rgba(0,200,255,.12);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .log-badge.pit { background: rgba(0,229,155,.12); color: var(--green); }
+
+  /* ── Detail modal overlay ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.85);
+    z-index: 100;
+    overflow-y: auto;
+    padding: 20px 16px 40px;
+  }
+  .modal-overlay.open { display: block; }
+  .modal-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    max-width: 580px;
+    margin: 20px auto;
+    overflow: hidden;
+  }
+  .modal-head {
+    background: linear-gradient(135deg, rgba(0,200,255,.1), transparent);
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .modal-head h2 {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+  .modal-close {
+    background: var(--border);
+    border: none;
+    color: var(--text);
+    font-size: 18px;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s;
+  }
+  .modal-close:hover { background: var(--accent2); color: white; }
+  .modal-body { padding: 18px 20px; }
+  .detail-section { margin-bottom: 18px; }
+  .detail-section h3 {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-key {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: .5px;
+    flex: 1;
+  }
+  .detail-val {
+    font-family: 'Exo 2', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    text-align: right;
+    flex: 1;
+  }
+
+  /* ── Password page ── */
+  .pw-box {
+    max-width: 380px;
+    width: 100%;
+    margin: 60px auto 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  .pw-icon { font-size: 40px; margin-bottom: 14px; }
+  .pw-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--warn);
+    margin-bottom: 6px;
+  }
+  .pw-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 22px;
+  }
+  .pw-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    padding: 12px 14px;
+    outline: none;
+    text-align: center;
+    letter-spacing: 2px;
+    transition: border-color .2s;
+  }
+  .pw-input:focus { border-color: var(--warn); }
+  .pw-err {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--accent2);
+    margin-top: 10px;
+    min-height: 18px;
+    letter-spacing: 1px;
+  }
+  .btn-warn {
+    background: linear-gradient(135deg, var(--warn), #cc8800);
+    color: var(--bg);
+    box-shadow: 0 4px 20px rgba(255,184,0,.3);
+  }
+  .btn-warn:hover { box-shadow: 0 6px 28px rgba(255,184,0,.5); }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 50px 20px;
+    color: var(--muted);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 14px; }
+  .empty-state p {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 1px;
+    line-height: 1.8;
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%; transform: translateX(-50%);
+    background: var(--green);
+    color: var(--bg);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 2px;
+    padding: 12px 26px;
+    border-radius: 40px;
+    box-shadow: 0 6px 24px rgba(0,229,155,.35);
+    z-index: 200;
+    opacity: 0;
+    transition: opacity .3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  /* ── Responsive ── */
+  @media (min-width: 500px) {
+    .home-cards { flex-direction: column; }
+  }
+
+  .sub-select-wrapper { margin-top: 10px; display: none; }
+  .sub-select-wrapper.visible { display: block; }
+
+  .problems-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .problem-btn {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 8px;
+    text-align: center;
+    font-family: 'Exo 2', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+    letter-spacing: .5px;
+    user-select: none;
+  }
+  .problem-btn.selected {
+    border-color: var(--accent2);
+    color: var(--accent2);
+    background: rgba(255,78,0,.1);
+    box-shadow: 0 0 10px rgba(255,78,0,.15);
+  }
+
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .filter-tab {
+    flex: 1;
+    padding: 9px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--muted);
+    cursor: pointer;
+    text-align: center;
+    transition: all .2s;
+    text-transform: uppercase;
+  }
+  .filter-tab.active { background: rgba(0,200,255,.1); border-color: var(--accent); color: var(--accent); }
+  .filter-tab.pit-tab.active { background: rgba(0,229,155,.1); border-color: var(--green); color: var(--green); }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══════════════════════════════════════ HOME ═══ -->
+<div class="page active" id="page-home">
+  <div class="home-header">
+    <div class="home-logo">⚡ REBUILT</div>
+    <div class="home-year">FRC 2026</div>
+    <div class="home-subtitle">SCOUTING SYSTEM // SELECT MODE</div>
+  </div>
+  <div class="home-cards">
+    <div class="home-card" onclick="goto('page-game-intro')">
+      <div class="card-icon">🎮</div>
+      <div class="card-info">
+        <div class="card-title">Game Scout</div>
+        <div class="card-desc">QUALIFICATION MATCH SCOUTING</div>
+      </div>
+      <div class="card-arrow">›</div>
+    </div>
+    <div class="home-card pit" onclick="goto('page-pit')">
+      <div class="card-icon">🔧</div>
+      <div class="card-info">
+        <div class="card-title">Pit Scout</div>
+        <div class="card-desc">ROBOT & HARDWARE INSPECTION</div>
+      </div>
+      <div class="card-arrow">›</div>
+    </div>
+    <div class="home-card logs" onclick="goto('page-logs-pw')">
+      <div class="card-icon">📋</div>
+      <div class="card-info">
+        <div class="card-title">Logs</div>
+        <div class="card-desc">VIEW ALL SUBMITTED REPORTS</div>
+      </div>
+      <div class="card-arrow">›</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ GAME INTRO ═══ -->
+<div class="page" id="page-game-intro">
+  <div class="header">
+    <button class="back-btn" onclick="goto('page-home')">‹ BACK</button>
+    <div class="logo">Game Scout</div>
+    <div class="sub">MATCH INFO</div>
+  </div>
+  <div class="steps">
+    <div class="step-dot active"></div>
+    <div class="step-dot"></div>
+    <div class="step-dot"></div>
+    <div class="step-dot"></div>
+  </div>
+  <div class="content">
+    <div class="section-title">Team <span>&</span> Match Info</div>
+
+    <div class="field-row">
+      <label>Team Name</label>
+      <input type="text" id="g-team-name" placeholder="e.g. The Eagles" autocomplete="off">
+    </div>
+    <div class="field-row">
+      <label>Team Number</label>
+      <input type="number" id="g-team-num" placeholder="e.g. 4911" min="1">
+    </div>
+    <div class="field-row">
+      <label>Qualification Number</label>
+      <input type="number" id="g-qual-num" placeholder="e.g. 42" min="1">
+    </div>
+
+    <button class="btn btn-primary" onclick="gameNext1()">NEXT: AUTONOMOUS ›</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ GAME AUTONOMOUS ═══ -->
+<div class="page" id="page-game-auto">
+  <div class="header">
+    <button class="back-btn" onclick="goto('page-game-intro')">‹ BACK</button>
+    <div class="logo">Autonomous</div>
+    <div class="sub">GAME SCOUT // STEP 2</div>
+  </div>
+  <div class="steps">
+    <div class="step-dot done"></div>
+    <div class="step-dot active"></div>
+    <div class="step-dot"></div>
+    <div class="step-dot"></div>
+  </div>
+  <div class="content">
+    <div class="section-title">Autonomous <span>Phase</span></div>
+
+    <div class="field-row">
+      <label>Fuel Score</label>
+      <div class="radio-group" id="auto-fuel"></div>
+    </div>
+
+    <div class="field-row">
+      <label>Path Used</label>
+      <div class="radio-group" id="auto-path"></div>
+    </div>
+
+    <div class="field-row">
+      <label>Climbed During Auto?</label>
+      <div class="radio-group" id="auto-climb"></div>
+    </div>
+
+    <button class="btn btn-primary" onclick="gameNext2()">NEXT: TELEOP ›</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ GAME TELEOP ═══ -->
+<div class="page" id="page-game-teleop">
+  <div class="header">
+    <button class="back-btn" onclick="goto('page-game-auto')">‹ BACK</button>
+    <div class="logo">Teleop</div>
+    <div class="sub">GAME SCOUT // STEP 3</div>
+  </div>
+  <div class="steps">
+    <div class="step-dot done"></div>
+    <div class="step-dot done"></div>
+    <div class="step-dot active"></div>
+    <div class="step-dot"></div>
+  </div>
+  <div class="content">
+    <div class="section-title">Teleop <span>Phase</span></div>
+
+    <div class="field-row">
+      <label>Game Style</label>
+      <div class="radio-group" id="tele-style"></div>
+    </div>
+
+    <div class="field-row">
+      <label>Fuel Capacity</label>
+      <div class="radio-group" id="tele-fuel"></div>
+    </div>
+
+    <div class="field-row">
+      <label>Shooter Type</label>
+      <div class="radio-group" id="tele-shooter"></div>
+    </div>
+
+    <div class="field-row">
+      <label>End Game Climb</label>
+      <div class="radio-group" id="tele-climb"></div>
+    </div>
+
+    <button class="btn btn-primary" onclick="gameNext3()">NEXT: ISSUES ›</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ GAME ISSUES ═══ -->
+<div class="page" id="page-game-issues">
+  <div class="header">
+    <button class="back-btn" onclick="goto('page-game-teleop')">‹ BACK</button>
+    <div class="logo">Issues</div>
+    <div class="sub">GAME SCOUT // STEP 4</div>
+  </div>
+  <div class="steps">
+    <div class="step-dot done"></div>
+    <div class="step-dot done"></div>
+    <div class="step-dot done"></div>
+    <div class="step-dot active"></div>
+  </div>
+  <div class="content">
+    <div class="section-title">Problems <span>Encountered</span></div>
+    <div class="field-row">
+      <label>Select all issues that occurred</label>
+      <div class="problems-grid" id="issue-grid"></div>
+    </div>
+    <div class="field-row">
+      <label>Notes (optional)</label>
+      <input type="text" id="g-notes" placeholder="Any extra observations...">
+    </div>
+    <button class="btn btn-success" onclick="gameSubmit()">✔ FINAL SUBMIT</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ PIT SCOUT ═══ -->
+<div class="page" id="page-pit">
+  <div class="header">
+    <button class="back-btn" onclick="goto('page-home')">‹ BACK</button>
+    <div class="logo" style="color:var(--green)">Pit Scout</div>
+    <div class="sub">ROBOT INSPECTION</div>
+  </div>
+  <div class="content">
+    <div class="section-title" style="color:var(--green)">Robot <span style="color:var(--accent)">Details</span></div>
+
+    <div class="field-row">
+      <label>Team Name</label>
+      <input type="text" id="p-team-name" placeholder="e.g. Iron Wolves" autocomplete="off">
+    </div>
+    <div class="field-row">
+      <label>Team Number</label>
+      <input type="number" id="p-team-num" placeholder="e.g. 4911" min="1">
+    </div>
+
+    <!-- Drive type -->
+    <div class="field-row">
+      <label>Drive Type</label>
+      <div class="radio-group" id="pit-drive"></div>
+      <div class="sub-select-wrapper" id="pit-drive-sub">
+        <select id="pit-drive-detail">
+          <option value="">— Select detail —</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <label>Shooter Type</label>
+      <div class="radio-group" id="pit-shooter"></div>
+    </div>
+
+    <div class="field-row">
+      <label>Max Fuel Capacity</label>
+      <input type="number" id="p-fuel-cap" placeholder="Enter number of fuel units" min="0">
+    </div>
+
+    <div class="field-row">
+      <label>Shooting Range</label>
+      <div class="radio-group" id="pit-range"></div>
+    </div>
+
+    <div class="field-row">
+      <label>Shooting Speed (units/sec)</label>
+      <input type="number" id="p-shoot-speed" placeholder="Enter speed number" min="0" step="0.1">
+    </div>
+
+    <div class="field-row">
+      <label>Field Zones Capable Of</label>
+      <div class="radio-group" id="pit-zones"></div>
+    </div>
+
+    <button class="btn btn-success" onclick="pitSubmit()" style="background:linear-gradient(135deg,var(--green),#007744);box-shadow:0 4px 20px rgba(0,229,155,.3);">✔ FINAL SUBMIT</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ LOGS PASSWORD ═══ -->
+<div class="page" id="page-logs-pw">
+  <div class="header">
+    <button class="back-btn" onclick="goto('page-home')">‹ BACK</button>
+    <div class="logo" style="color:var(--warn)">Logs</div>
+    <div class="sub">RESTRICTED ACCESS</div>
+  </div>
+  <div class="content">
+    <div class="pw-box">
+      <div class="pw-icon">🔐</div>
+      <div class="pw-title">RESTRICTED</div>
+      <div class="pw-sub">ENTER ACCESS CODE TO VIEW LOGS</div>
+      <input class="pw-input" type="password" id="pw-input" placeholder="••••••••••••••" onkeydown="if(event.key==='Enter')checkPw()">
+      <div class="pw-err" id="pw-err"></div>
+      <button class="btn btn-warn" onclick="checkPw()" style="margin-top:16px">UNLOCK ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ LOGS ═══ -->
+<div class="page" id="page-logs">
+  <div class="header">
+    <button class="back-btn" onclick="goto('page-home')">‹ HOME</button>
+    <div class="logo" style="color:var(--warn)">Logs</div>
+    <div class="sub">ALL SUBMITTED REPORTS</div>
+  </div>
+  <div class="content">
+    <div class="filter-tabs">
+      <div class="filter-tab active" id="tab-all" onclick="filterLogs('all')">ALL</div>
+      <div class="filter-tab" id="tab-game" onclick="filterLogs('game')">GAME</div>
+      <div class="filter-tab pit-tab" id="tab-pit" onclick="filterLogs('pit')">PIT</div>
+    </div>
+    <div id="logs-list"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════ DETAIL MODAL ═══ -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-head">
+      <h2 id="modal-title">Report</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+
+function goto(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  $(pageId).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Build radio buttons (js-managed)
+function buildRadio(containerId, options, multiSelect=false, colorClass='') {
+  const container = $(containerId);
+  container.innerHTML = '';
+  options.forEach(opt => {
+    const btn = document.createElement('div');
+    btn.className = 'radio-btn' + (colorClass ? ' ' + colorClass : '');
+    btn.textContent = opt;
+    btn.dataset.value = opt;
+    btn.onclick = () => {
+      if (multiSelect) {
+        btn.classList.toggle('selected');
+      } else {
+        container.querySelectorAll('.radio-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      }
+    };
+    container.appendChild(btn);
+  });
+}
+
+function getSelected(containerId, multiSelect=false) {
+  const btns = document.querySelectorAll(`#${containerId} .radio-btn.selected`);
+  if (multiSelect) return Array.from(btns).map(b => b.dataset.value);
+  return btns.length ? btns[0].dataset.value : '';
+}
+
+// ══════════════════════════════════════════════════════
+//  INIT ALL CONTROLS
+// ══════════════════════════════════════════════════════
+function initControls() {
+  // Game Auto
+  buildRadio('auto-fuel', ['None','Little','Medium','High']);
+  buildRadio('auto-path', ['Trench','Bump','Both','Neither']);
+  buildRadio('auto-climb', ['Yes','No']);
+
+  // Game Teleop
+  buildRadio('tele-style', ['Offensive','Defending']);
+  buildRadio('tele-fuel', ['Low','Medium','High']);
+  buildRadio('tele-shooter', ['Dumper','Swerves Moved','Turret']);
+  buildRadio('tele-climb', ['None','L1','L2','L3']);
+
+  // Issues
+  const issueGrid = $('issue-grid');
+  ['Intake Fail','Turret Fail','Driving Fail','Lost Coms'].forEach(issue => {
+    const btn = document.createElement('div');
+    btn.className = 'problem-btn';
+    btn.textContent = issue;
+    btn.onclick = () => btn.classList.toggle('selected');
+    issueGrid.appendChild(btn);
+  });
+
+  // Pit Drive
+  buildRadio('pit-drive', ['Swerve','Tank Drive']);
+  document.querySelectorAll('#pit-drive .radio-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = btn.dataset.value;
+      const sub = $('pit-drive-sub');
+      const sel = $('pit-drive-detail');
+      sub.classList.add('visible');
+      sel.innerHTML = '<option value="">— Select detail —</option>';
+      if (val === 'Swerve') {
+        ['L1','L2','L3','Other'].forEach(o => sel.innerHTML += `<option value="${o}">L${o === 'Other' ? ' Other' : o.slice(1)}: ${o}</option>`);
+        sel.options[0].text = '— Swerve type —';
+      } else {
+        ['Kraken','Falcon','Other'].forEach(o => sel.innerHTML += `<option value="${o}">${o}</option>`);
+        sel.options[0].text = '— Motor type —';
+      }
+    });
+  });
+
+  buildRadio('pit-shooter', ['Dumper','Swerves Moved','Turret']);
+  buildRadio('pit-range', ['Near','Normal','Far']);
+  buildRadio('pit-zones', ['Bump','Trench','Both']);
+}
+
+// ══════════════════════════════════════════════════════
+//  GAME SCOUT STATE
+// ══════════════════════════════════════════════════════
+let gData = {};
+
+function gameNext1() {
+  const name = $('g-team-name').value.trim();
+  const num  = $('g-team-num').value.trim();
+  const qual = $('g-qual-num').value.trim();
+  if (!name || !num || !qual) { alert('Please fill all fields.'); return; }
+  gData = { type:'game', teamName: name, teamNum: num, qualNum: qual };
+  goto('page-game-auto');
+}
+
+function gameNext2() {
+  const fuel  = getSelected('auto-fuel');
+  const path  = getSelected('auto-path');
+  const climb = getSelected('auto-climb');
+  if (!fuel || !path || !climb) { alert('Please answer all questions.'); return; }
+  gData.auto = { fuel, path, climb };
+  goto('page-game-teleop');
+}
+
+function gameNext3() {
+  const style   = getSelected('tele-style');
+  const fuelCap = getSelected('tele-fuel');
+  const shooter = getSelected('tele-shooter');
+  const climb   = getSelected('tele-climb');
+  if (!style || !fuelCap || !shooter || !climb) { alert('Please answer all questions.'); return; }
+  gData.teleop = { style, fuelCap, shooter, climb };
+  goto('page-game-issues');
+}
+
+function gameSubmit() {
+  const issues = Array.from(document.querySelectorAll('#issue-grid .problem-btn.selected')).map(b => b.textContent);
+  const notes  = $('g-notes').value.trim();
+  gData.issues = issues.length ? issues.join(', ') : 'None';
+  gData.notes  = notes || '—';
+  gData.timestamp = new Date().toLocaleString();
+  saveLog(gData);
+  toast('✔ GAME REPORT SUBMITTED!');
+  resetGame();
+  goto('page-home');
+}
+
+function resetGame() {
+  $('g-team-name').value = '';
+  $('g-team-num').value = '';
+  $('g-qual-num').value = '';
+  $('g-notes').value = '';
+  ['auto-fuel','auto-path','auto-climb','tele-style','tele-fuel','tele-shooter','tele-climb'].forEach(id => {
+    document.querySelectorAll(`#${id} .radio-btn`).forEach(b => b.classList.remove('selected'));
+  });
+  document.querySelectorAll('#issue-grid .problem-btn').forEach(b => b.classList.remove('selected'));
+  gData = {};
+}
+
+// ══════════════════════════════════════════════════════
+//  PIT SCOUT
+// ══════════════════════════════════════════════════════
+function pitSubmit() {
+  const name      = $('p-team-name').value.trim();
+  const num       = $('p-team-num').value.trim();
+  const drive     = getSelected('pit-drive');
+  const driveSub  = $('pit-drive-detail').value;
+  const shooter   = getSelected('pit-shooter');
+  const fuelCap   = $('p-fuel-cap').value.trim();
+  const range     = getSelected('pit-range');
+  const speed     = $('p-shoot-speed').value.trim();
+  const zones     = getSelected('pit-zones');
+
+  if (!name || !num || !drive || !shooter || !fuelCap || !range || !speed || !zones) {
+    alert('Please fill all fields.'); return;
+  }
+
+  const pData = {
+    type: 'pit',
+    teamName: name, teamNum: num,
+    drive, driveSub: driveSub || '—',
+    shooter, fuelCap, range, speed, zones,
+    timestamp: new Date().toLocaleString()
+  };
+  saveLog(pData);
+  toast('✔ PIT REPORT SUBMITTED!');
+  resetPit();
+  goto('page-home');
+}
+
+function resetPit() {
+  ['p-team-name','p-team-num','p-fuel-cap','p-shoot-speed'].forEach(id => $(id).value = '');
+  ['pit-drive','pit-shooter','pit-range','pit-zones'].forEach(id => {
+    document.querySelectorAll(`#${id} .radio-btn`).forEach(b => b.classList.remove('selected'));
+  });
+  $('pit-drive-sub').classList.remove('visible');
+  $('pit-drive-detail').innerHTML = '<option value="">— Select detail —</option>';
+}
+
+// ══════════════════════════════════════════════════════
+//  STORAGE
+// ══════════════════════════════════════════════════════
+function saveLog(data) {
+  const logs = getLogs();
+  logs.unshift(data);
+  localStorage.setItem('frc2026_logs', JSON.stringify(logs));
+}
+function getLogs() {
+  try { return JSON.parse(localStorage.getItem('frc2026_logs')) || []; } catch { return []; }
+}
+
+// ══════════════════════════════════════════════════════
+//  PASSWORD
+// ══════════════════════════════════════════════════════
+const PASS = 'RIKITIK-221982';
+function checkPw() {
+  const val = $('pw-input').value;
+  if (val === PASS) {
+    $('pw-input').value = '';
+    $('pw-err').textContent = '';
+    renderLogs('all');
+    goto('page-logs');
+  } else {
+    $('pw-err').textContent = '✕ INVALID ACCESS CODE';
+    $('pw-input').value = '';
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  LOGS RENDERING
+// ══════════════════════════════════════════════════════
+let currentFilter = 'all';
+function filterLogs(f) {
+  currentFilter = f;
+  ['all','game','pit'].forEach(t => {
+    const el = $('tab-'+t);
+    el.classList.remove('active','pit-tab');
+  });
+  $('tab-'+f).classList.add('active');
+  if (f === 'pit') $('tab-pit').classList.add('pit-tab');
+  renderLogs(f);
+}
+
+function renderLogs(filter) {
+  const list = $('logs-list');
+  let logs = getLogs();
+  if (filter === 'game') logs = logs.filter(l => l.type === 'game');
+  if (filter === 'pit')  logs = logs.filter(l => l.type === 'pit');
+
+  if (!logs.length) {
+    list.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>NO REPORTS FOUND<br>SUBMIT SCOUTING DATA<br>TO SEE LOGS HERE</p></div>`;
+    return;
+  }
+
+  list.innerHTML = logs.map((log, i) => {
+    const isPit = log.type === 'pit';
+    const title = isPit
+      ? `Team ${log.teamNum} – ${log.teamName}`
+      : `Q${log.qualNum} – Team ${log.teamNum} – ${log.teamName}`;
+    const meta = log.timestamp;
+    return `
+      <div class="log-entry ${isPit ? 'pit-log' : ''}" onclick="showDetail(${i})">
+        <span class="log-badge ${isPit ? 'pit' : ''}">${isPit ? 'PIT SCOUT' : 'GAME SCOUT'}</span>
+        <div class="log-title">${title}</div>
+        <div class="log-meta">${meta}</div>
+      </div>`;
+  }).join('');
+
+  // store filtered indices for modal lookup
+  window._renderedLogs = logs;
+}
+
+function showDetail(idx) {
+  const log = window._renderedLogs[idx];
+  $('modal-title').textContent = log.type === 'pit'
+    ? `Pit: Team ${log.teamNum}`
+    : `Q${log.qualNum} – Team ${log.teamNum}`;
+
+  let html = '';
+  if (log.type === 'game') {
+    html += section('Team Info', [
+      ['Team Name', log.teamName],
+      ['Team Number', log.teamNum],
+      ['Qualification #', log.qualNum],
+    ]);
+    html += section('Autonomous', [
+      ['Fuel Score', log.auto.fuel],
+      ['Path Used', log.auto.path],
+      ['Climbed', log.auto.climb],
+    ]);
+    html += section('Teleop', [
+      ['Game Style', log.teleop.style],
+      ['Fuel Capacity', log.teleop.fuelCap],
+      ['Shooter Type', log.teleop.shooter],
+      ['End Climb', log.teleop.climb],
+    ]);
+    html += section('Issues', [
+      ['Problems', log.issues],
+      ['Notes', log.notes],
+    ]);
+  } else {
+    html += section('Team Info', [
+      ['Team Name', log.teamName],
+      ['Team Number', log.teamNum],
+    ]);
+    html += section('Robot Config', [
+      ['Drive Type', log.drive],
+      ['Drive Detail', log.driveSub],
+      ['Shooter Type', log.shooter],
+      ['Max Fuel Cap', log.fuelCap],
+      ['Shooting Range', log.range],
+      ['Shoot Speed', log.speed],
+      ['Field Zones', log.zones],
+    ]);
+  }
+  html += section('Meta', [['Submitted', log.timestamp]]);
+
+  $('modal-body').innerHTML = html;
+  $('modal').classList.add('open');
+}
+
+function section(title, rows) {
+  const rowsHtml = rows.map(([k,v]) =>
+    `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`
+  ).join('');
+  return `<div class="detail-section"><h3>${title}</h3>${rowsHtml}</div>`;
+}
+
+function closeModal(e) {
+  if (!e || e.target === $('modal')) $('modal').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════════════
+initControls();
+</script>
+</div>
+</body>
+</html>
